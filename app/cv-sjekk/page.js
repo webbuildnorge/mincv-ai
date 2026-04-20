@@ -20,33 +20,16 @@ export default function CVSjekk() {
     setResult(null);
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/cv-analyse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: `Du er en norsk karriererådgiver. Analyser CV-en mot stillingsannonsen og returner KUN et JSON-objekt (ingen markdown, ingen forklaring) med disse feltene:
-{
-  "score": <tall 0-100>,
-  "sammendrag": "<2 setninger om match>",
-  "styrker": ["<punkt>", "<punkt>", "<punkt>"],
-  "mangler": ["<punkt>", "<punkt>", "<punkt>"],
-  "tips": ["<konkret tips>", "<konkret tips>", "<konkret tips>"]
-}`,
-          messages: [{
-            role: 'user',
-            content: `CV:\n${cv}\n\nStillingsannonse:\n${ad}`
-          }]
-        })
+        body: JSON.stringify({ cv, ad })
       });
 
-      const data = await res.json();
-      const text = data.content?.map(b => b.text || '').join('') || '';
-      const clean = text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
+      const parsed = await res.json();
+      if (parsed.error) throw new Error(parsed.error);
       setResult(parsed);
-    } catch (e) {
+    } catch {
       setError('Noe gikk galt. Prøv igjen.');
     }
     setLoading(false);

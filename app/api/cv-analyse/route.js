@@ -7,33 +7,37 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Mangler CV eller stillingsannonse' }, { status: 400 });
   }
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+  const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: `Du er en norsk karriererådgiver. Analyser CV-en mot stillingsannonsen og returner KUN et JSON-objekt (ingen markdown, ingen forklaring) med disse feltene:
+      contents: [{
+        parts: [{
+          text: `Du er en norsk karriererådgiver. Analyser CV-en mot stillingsannonsen og returner KUN et JSON-objekt (ingen markdown, ingen forklaring) med disse feltene:
 {
   "score": <tall 0-100>,
   "sammendrag": "<2 setninger om match>",
   "styrker": ["<punkt>", "<punkt>", "<punkt>"],
   "mangler": ["<punkt>", "<punkt>", "<punkt>"],
   "tips": ["<konkret tips>", "<konkret tips>", "<konkret tips>"]
-}`,
-      messages: [{
-        role: 'user',
-        content: `CV:\n${cv}\n\nStillingsannonse:\n${ad}`
-      }]
+}
+
+CV:
+${cv}
+
+Stillingsannonse:
+${ad}`
+        }]
+      }],
+      generationConfig: { temperature: 0.4 }
     })
   });
 
   const data = await res.json();
-  const text = data.content?.map(b => b.text || '').join('') || '';
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
   const clean = text.replace(/```json|```/g, '').trim();
 
   try {
